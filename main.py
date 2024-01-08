@@ -7,7 +7,7 @@ pygame.init()
 EVENT_FOR_KETTLE = pygame.USEREVENT + 1
 pygame.time.set_timer(EVENT_FOR_KETTLE, 150)
 
-SIZE = WIDTH, HEIGHT = 1500, 900
+SIZE = WIDTH, HEIGHT = 1920, 1025
 HERO_SPEED = 3
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
@@ -30,9 +30,10 @@ def load_image(name, colorkey=None):
     return image
 
 
+start_button = load_image("letsgo.png")
+
 arena = load_image("new_fon.png")
 hero = load_image("hero.jpg", colorkey=-1)
-
 kettle_images = ["0.gif", "1.gif", "2.gif", "3.gif", "4.gif", "5.gif", "6.gif", "7.gif", "8.gif", "9.gif", "10.gif",
                  "11.gif", "12.gif", "13.gif", "14.gif", "15.gif"]
 
@@ -79,39 +80,10 @@ class Player(pygame.sprite.Sprite):
 
 
 class Throne(pygame.sprite.Sprite):
-    def __init__(self, img, pos_x, pos_y):
+    def __init__(self, img, pos_x, pos_y, type):
         super().__init__(throne_group, all_sprites)
         self.image = img
         self.rect = self.image.get_rect().move(pos_x, pos_y)
-
-
-class Camera:
-    def __init__(self, width, height):
-        self.camera = pygame.Rect(0, 0, width, height)
-        self.width = width
-        self.height = height
-        self.move_camera = False
-
-    def apply(self, target):
-        return target.rect.move(self.camera.topleft)
-
-    def update(self, target):
-        x = -target.rect.x + WIDTH // 2
-        y = -target.rect.y + HEIGHT // 2
-
-        x = min(0, x)
-        y = min(0, y)
-        x = max(-(self.width - WIDTH), x)
-        y = max(-(self.height - HEIGHT), y)
-
-        if target.rect.x < WIDTH / 2 - 200 or target.rect.x > self.width - WIDTH / 2 + 200 \
-                or target.rect.y < HEIGHT / 2 - 200 or target.rect.y > self.height - HEIGHT / 2 + 200:
-            self.move_camera = True
-        else:
-            self.move_camera = False
-
-        if self.move_camera:
-            self.camera = pygame.Rect(x, y, self.width, self.height)
 
 
 def terminate():
@@ -122,13 +94,16 @@ def terminate():
 def start_screen():
     fon = pygame.transform.scale(load_image('zastavka.jpeg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
+    screen.blit(start_button, (WIDTH / 2 - 500, HEIGHT / 2 - 400))
+    start_button_rect = start_button.get_rect(topleft=(WIDTH / 2 - 500, HEIGHT / 2 - 400))
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
-                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if start_button_rect.collidepoint(event.pos):
+                    return
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -136,11 +111,10 @@ def start_screen():
 pygame.display.set_caption("Aota 2")
 start_screen()
 player = Player(150, 150)
-camera = Camera(WIDTH, HEIGHT)
 running = True
 frame_index = 0
 kettles = []
-kettle = Throne(load_image(kettle_images[frame_index]), 0, 0)
+kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, 1)
 kettles.append(kettle)
 
 while running:
@@ -157,22 +131,16 @@ while running:
             for sprite in kettles:
                 sprite.kill()
             kettles.clear()
-            kettle = Throne(load_image(kettle_images[frame_index]), 0, 0)
+            kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, 1)
             kettles.append(kettle)
 
     all_sprites.update()
     screen.blit(arena, (0, 0))
 
-    camera.update(player)
     for sprite in all_sprites:
-        if camera.move_camera:
-            sprite_rect = sprite.rect.move(camera.camera.topleft)
-            screen.blit(sprite.image, sprite_rect)
-        else:
-            screen.blit(sprite.image, sprite.rect)
+        screen.blit(sprite.image, (sprite.rect.x, sprite.rect.y))
 
     pygame.display.flip()
-    print(player.rect.x, player.rect.y)
     clock.tick(FPS)
 
 pygame.quit()
