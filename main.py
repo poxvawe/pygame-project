@@ -5,10 +5,13 @@ import os
 pygame.init()
 
 EVENT_FOR_KETTLE = pygame.USEREVENT + 1
+EVENT_FOR_DEFAULT_REGENERATION = pygame.USEREVENT + 1
 pygame.time.set_timer(EVENT_FOR_KETTLE, 150)
+pygame.time.set_timer(EVENT_FOR_DEFAULT_REGENERATION, 1050)
 
 SIZE = WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
 HERO_SPEED = 3
+DEFAULT_REGEN = 1
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
 FPS = 50
@@ -55,7 +58,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.target_pos = None
         self.damage = 10
-        self.health = 100
+        self.health = 30
 
     def update(self, *args, **kwargs):
         if args:
@@ -88,6 +91,12 @@ class Player(pygame.sprite.Sprite):
             else:
                 self.target_pos = None
 
+    def change_hp(self, value):
+        if self.health + value >= 100:
+            self.health = 100
+        else:
+            self.health += value
+
 
 class Throne(pygame.sprite.Sprite):
     def __init__(self, img, pos_x, pos_y, type):
@@ -96,7 +105,7 @@ class Throne(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.type = type
 
-        if type == "enemy":
+        if self.type == "enemy":
             self.health = 100
         else:
             self.health = None
@@ -116,7 +125,7 @@ def terminate():
 def start_screen():
     fon = pygame.transform.scale(load_image('zastavka.jpeg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    screen.blit(start_button, (WIDTH / 2 - 50, HEIGHT / 2 + 150))
+    screen.blit(start_button, (WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
     start_button_rect = start_button.get_rect(
         topleft=(WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
 
@@ -157,6 +166,9 @@ while running:
             kettles.clear()
             kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, 1)
             kettles.append(kettle)
+        if event.type == EVENT_FOR_DEFAULT_REGENERATION:
+            player.health += DEFAULT_REGEN
+            print(player.health)
 
     all_sprites.update()
     screen.blit(arena, (0, 0))
