@@ -32,10 +32,12 @@ def load_image(name, colorkey=None):
 
 start_button = load_image("letsgo.png")
 
+target_base = load_image("throne.png")
 arena = load_image("new_fon.png")
-hero = load_image("hero.jpg", colorkey=-1)
+hero = load_image("zxczxc.png")
 kettle_images = ["0.gif", "1.gif", "2.gif", "3.gif", "4.gif", "5.gif", "6.gif", "7.gif", "8.gif", "9.gif", "10.gif",
                  "11.gif", "12.gif", "13.gif", "14.gif", "15.gif"]
+kick_icon = load_image("rocket.jpg", colorkey=-1)
 
 all_sprites = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
@@ -73,8 +75,14 @@ class Player(pygame.sprite.Sprite):
                 move_x = dx * HERO_SPEED / distance
                 move_y = dy * HERO_SPEED / distance
 
+                old_rect = self.rect.copy()
+
                 self.rect.x += move_x
                 self.rect.y += move_y
+
+                if pygame.sprite.spritecollideany(self, throne_group):
+                    self.rect = old_rect
+
             else:
                 self.target_pos = None
 
@@ -84,6 +92,18 @@ class Throne(pygame.sprite.Sprite):
         super().__init__(throne_group, all_sprites)
         self.image = img
         self.rect = self.image.get_rect().move(pos_x, pos_y)
+        self.type = type
+
+        if type == "enemy":
+            self.health = 100
+        else:
+            self.health = None
+
+    def take_damage(self, damage):
+        if self.health is not None:
+            self.health -= damage
+            if self.health <= 0:
+                self.kill()
 
 
 def terminate():
@@ -94,8 +114,8 @@ def terminate():
 def start_screen():
     fon = pygame.transform.scale(load_image('zastavka.jpeg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
-    screen.blit(start_button, (WIDTH / 2 - 500, HEIGHT / 2 - 400))
-    start_button_rect = start_button.get_rect(topleft=(WIDTH / 2 - 500, HEIGHT / 2 - 400))
+    screen.blit(start_button, (WIDTH / 2 - 50, HEIGHT / 2 + 150))
+    start_button_rect = start_button.get_rect(topleft=(WIDTH / 2 - 50, HEIGHT / 2 + 150))
 
     while True:
         for event in pygame.event.get():
@@ -104,7 +124,7 @@ def start_screen():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button_rect.collidepoint(event.pos):
                     return
-        pygame.display.flip()
+        pygame.display.update()
         clock.tick(FPS)
 
 
@@ -114,7 +134,8 @@ player = Player(150, 150)
 running = True
 frame_index = 0
 kettles = []
-kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, 1)
+kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, "friendly")
+enemys_throne = Throne(target_base, WIDTH - 326, HEIGHT / 2 - 185, "enemy")
 kettles.append(kettle)
 
 while running:
