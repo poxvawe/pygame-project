@@ -7,7 +7,7 @@ pygame.init()
 EVENT_FOR_KETTLE = pygame.USEREVENT + 1
 pygame.time.set_timer(EVENT_FOR_KETTLE, 150)
 
-SIZE = WIDTH, HEIGHT = 1920, 1025
+SIZE = WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().current_h
 HERO_SPEED = 3
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
@@ -54,6 +54,8 @@ class Player(pygame.sprite.Sprite):
         self.now_side = "right"
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.target_pos = None
+        self.damage = 10
+        self.health = 100
 
     def update(self, *args, **kwargs):
         if args:
@@ -115,7 +117,8 @@ def start_screen():
     fon = pygame.transform.scale(load_image('zastavka.jpeg'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     screen.blit(start_button, (WIDTH / 2 - 50, HEIGHT / 2 + 150))
-    start_button_rect = start_button.get_rect(topleft=(WIDTH / 2 - 50, HEIGHT / 2 + 150))
+    start_button_rect = start_button.get_rect(
+        topleft=(WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
 
     while True:
         for event in pygame.event.get():
