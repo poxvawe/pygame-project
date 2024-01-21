@@ -25,7 +25,7 @@ SIZE = WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().cu
 DEFAULT_CREEP_SPEED = 3
 DEFAULT_HERO_SPEED = 3
 DEFAULT_REGEN = 1
-DEFAULT_HERO_DAMAGE = 10
+DEFAULT_HERO_DAMAGE = 100
 MAX_HEALTH = 100
 last_shot_time = pygame.time.get_ticks()
 DEFAULT_SHOT_COOLDOWN = 2000
@@ -60,7 +60,7 @@ kettle_images = ["0.gif", "1.gif", "2.gif", "3.gif", "4.gif", "5.gif", "6.gif", 
                  "11.gif", "12.gif", "13.gif", "14.gif", "15.gif"]
 shot = load_image("purplerocket.png", colorkey=-1)
 fireball = load_image("fireball1.png", colorkey=-1)
-tower = load_image("tower1.png")
+tower_img = load_image("tower1.png")
 creep = load_image("creep.png")
 my_ally = load_image("ally.png")
 
@@ -78,7 +78,6 @@ hp_icon = load_image("hp_icon.png")
 
 all_sprites = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
-allies_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 throne_group = pygame.sprite.Group()
 tower_group = pygame.sprite.Group()
@@ -104,6 +103,7 @@ class Player(pygame.sprite.Sprite):
         self.invulnerability_timer = 0
         self.get_coins = 100
         self.cooldown = DEFAULT_SHOT_COOLDOWN
+        self.score = 0
 
     def update(self, *args, **kwargs):
         if args:
@@ -162,7 +162,7 @@ class Player(pygame.sprite.Sprite):
                 self.health = self.max_health
             elif self.health + value < 0:
                 self.kill()
-                terminate()
+                end_screen(player.score)
             else:
                 self.health += value
 
@@ -170,7 +170,7 @@ class Player(pygame.sprite.Sprite):
         if self.coins + value <= 10000:
             self.coins += value
         else:
-            self.coins = 2500
+            self.coins = 10000
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -209,6 +209,7 @@ class Enemy(pygame.sprite.Sprite):
         if self.health <= 0:
             self.kill()
             player.farm_coins(player.get_coins)
+            player.score += 10
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -240,6 +241,7 @@ class Bullet(pygame.sprite.Sprite):
 
                 self.rect.x += move_x
                 self.rect.y += move_y
+
             if self.type:
                 if pygame.sprite.collide_mask(self, self.target):
                     if isinstance(self.target, (Throne, Tower, Enemy)):
@@ -274,7 +276,7 @@ class Throne(pygame.sprite.Sprite):
                 self.health = self.max_health
             if self.health <= 0:
                 self.kill()
-                terminate()
+                end_screen(player.score)
 
 
 class Tower(pygame.sprite.Sprite):
@@ -295,6 +297,7 @@ class Tower(pygame.sprite.Sprite):
         if self.health <= 0:
             self.kill()
             player.farm_coins(1500)
+            player.score += 100
 
 
 def terminate():
@@ -320,10 +323,20 @@ def start_screen():
         clock.tick(FPS)
 
 
-pygame.display.set_caption("Aota 2")
+def end_screen(final_score):
+    screen.fill((0, 0, 0))
+    font_end = pygame.font.SysFont("comicsansms", 64)
+    text_surface = font_end.render(f"Game Over. Your Score: {final_score}", True, (255, 255, 255))
+    screen.blit(text_surface, (WIDTH / 2 - text_surface.get_width() / 2, HEIGHT / 2 - text_surface.get_height() / 2))
+    pygame.display.flip()
+    pygame.time.delay(3000)
+    terminate()
+
+
 start_screen()
-player = Player(150, 150)
-tower = Tower(tower, WIDTH / 2 + 170, HEIGHT / 2 - 300)
+pygame.display.set_caption("Aota 2")
+player = Player(160, 160)
+tower = Tower(tower_img, WIDTH / 2 + 170, HEIGHT / 2 - 300)
 running = True
 frame_index = 0
 kettles = []
@@ -334,6 +347,7 @@ kettles.append(kettle)
 while running:
     hp = font.render(f"{player.health} / {player.max_health}", 1, (255, 0, 0))
     coins = font.render(f"{player.coins}", 1, (255, 215, 0))
+    now_score = font.render(f"очки: {player.score}", 1, (0, 255, 50))
     screen.fill("white")
 
     for event in pygame.event.get():
@@ -345,27 +359,29 @@ while running:
             if event.button == 1:
                 distance_to_target = math.sqrt(
                     (player.rect.x - event.pos[0]) ** 2 + (player.rect.y - event.pos[1]) ** 2)
-                if distance_to_target <= 510:
+                if distance_to_target <= 600:
                     current_time = pygame.time.get_ticks()
                     if current_time - last_shot_time >= player.cooldown:
                         click_x, click_y = event.pos
-                        if tower and tower.health > 0:
+                        if tower.health > 0:
                             clicked_sprites = [sprite for sprite in enemies_group if
                                                sprite.rect.collidepoint(click_x, click_y)]
 
                             for clicked_sprite in clicked_sprites:
-                                Bullet(player.rect.x + player.rect.width - 5, player.rect.height / 2 + 5,
+                                Bullet(player.rect.x + player.rect.width - 5,
+                                       player.rect.y + player.rect.height / 2 + 5,
                                        clicked_sprite, 1)
 
                             last_shot_time = current_time
                         else:
-                            clicked_sprites = [sprite for sprite in throne_group if
-                                               sprite.rect.collidepoint(click_x, click_y) and sprite.type == "enemy"]
-                            clicked_sprites += [sprite for sprite in enemies_group if
-                                                sprite.rect.collidepoint(click_x, click_y)]
+                            clicked_sprites = [sprite for sprite in enemies_group if
+                                               sprite.rect.collidepoint(click_x, click_y)]
+                            clicked_sprites += [sprite for sprite in throne_group if
+                                                sprite.rect.collidepoint(click_x, click_y) and sprite.type == "enemy"]
 
                             for clicked_sprite in clicked_sprites:
-                                Bullet(player.rect.x + player.rect.width - 5, player.rect.height / 2 + 5,
+                                Bullet(player.rect.x + player.rect.width - 5,
+                                       player.rect.y + player.rect.height / 2 + 5,
                                        clicked_sprite, 1)
 
                             last_shot_time = current_time
@@ -374,6 +390,7 @@ while running:
                     player.max_health += 50
                     player.speed += 1
                     player.coins -= 750
+                    player.score += 20
                 if 170 <= event.pos[0] <= 170 + spell2.get_width() and 930 <= event.pos[
                     1] <= 930 + spell2.get_height() and player.coins >= 1250:
                     player.invulnerable = True
@@ -383,14 +400,17 @@ while running:
                     1] <= 930 + spell3.get_height() and player.coins >= 1100:
                     player.damage += 10
                     player.coins -= 1100
+                    player.score += 20
                 if 490 <= event.pos[0] <= 490 + spell4.get_width() and 930 <= event.pos[
                     1] <= 930 + spell4.get_height() and player.coins >= 550:
                     player.get_coins += 25
                     player.coins -= 550
+                    player.score += 20
                 if 650 <= event.pos[0] <= 650 + spell5.get_width() and 930 <= event.pos[
                     1] <= 930 + spell5.get_height() and player.coins >= 1500:
                     player.health += player.max_health // 2
                     player.coins -= 1500
+                    player.score += 20
                 if 810 <= event.pos[0] <= 810 + spell6.get_width() and 930 <= event.pos[
                     1] <= 930 + spell6.get_height() and player.coins >= 2200:
                     player.damage += 5
@@ -399,15 +419,18 @@ while running:
                     player.health += 25
                     player.get_coins += 15
                     player.coins -= 2200
+                    player.score += 20
                 if 970 <= event.pos[0] <= 970 + spell7.get_width() and 930 <= event.pos[
                     1] <= 930 + spell7.get_height() and player.coins >= 2800:
                     player.max_health += 150
                     player.health += 150
                     player.coins -= 2800
+                    player.score += 20
                 if 1130 <= event.pos[0] <= 1130 + spell8.get_width() and 930 <= event.pos[
                     1] <= 930 + spell8.get_height() and player.coins >= 2450:
                     player.cooldown -= 1000
                     player.coins -= 2450
+                    player.score += 20
 
         if event.type == pygame.KEYDOWN:
             if pygame.key.get_pressed()[pygame.K_x]:
@@ -429,7 +452,7 @@ while running:
                 distance_to_player = math.sqrt(
                     (enemy.rect.x - player.rect.x) ** 2 + (enemy.rect.y - player.rect.y) ** 2)
                 if distance_to_player <= 500 and enemy.health > 0:
-                    shot_from_enemy = Bullet(enemy.rect.x, enemy.rect.y, player, 0)
+                    shot_from_enemy = Bullet(enemy.rect.x + 80, enemy.rect.y + 20, player, 0)
         if event.type == EVENT_FOR_SPAWN_CREEPS:
             enemy = Enemy(WIDTH - 200, random.randint(0, 900), player)
 
@@ -448,6 +471,7 @@ while running:
     screen.blit(hp, (1700, 910))
     screen.blit(money, (1606, 980))
     screen.blit(coins, (1700, 980))
+    screen.blit(now_score, (1370, 960))
 
     for i in range(len(spell_costs)):
         cost = font.render(f"{spell_costs[i]}", 1, (255, 215, 10))
@@ -456,6 +480,11 @@ while running:
     for enemy in enemies_group:
         enemy_hp = font.render(f"{enemy.health}", 1, (255, 0, 0))
         screen.blit(enemy_hp, (enemy.rect.x - 5, enemy.rect.y - 15))
+
+    for throne in throne_group:
+        if throne.type == "enemy":
+            throne_hp = font.render(f"{throne.health}", 1, (255, 0, 0))
+            screen.blit(throne_hp, (throne.rect.x - 5, throne.rect.y - 15))
 
     for sprite in all_sprites:
         screen.blit(sprite.image, (sprite.rect.x, sprite.rect.y))
