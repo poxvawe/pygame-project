@@ -3,7 +3,7 @@ import pygame
 import os
 import math
 import random
-import sqlite3
+from data_base import save_score
 
 pygame.init()
 
@@ -25,7 +25,7 @@ SIZE = WIDTH, HEIGHT = pygame.display.Info().current_w, pygame.display.Info().cu
 DEFAULT_CREEP_SPEED = 3
 DEFAULT_HERO_SPEED = 3
 DEFAULT_REGEN = 1
-DEFAULT_HERO_DAMAGE = 100
+DEFAULT_HERO_DAMAGE = 10
 MAX_HEALTH = 100
 last_shot_time = pygame.time.get_ticks()
 DEFAULT_SHOT_COOLDOWN = 2000
@@ -52,6 +52,7 @@ def load_image(name, colorkey=None):
 
 
 start_button = load_image("letsgo.png")
+end_button = load_image("end_btn.png")
 
 target_base = load_image("tron.png")
 arena = load_image("new_fon1.png")
@@ -75,6 +76,8 @@ spell7 = load_image("sf_rama.png")
 spell8 = load_image("tornado_speed_rama.png")
 money = load_image("cash1.png")
 hp_icon = load_image("hp_icon.png")
+input_rama = load_image("ramka.png")
+rules_img = load_image("rulesv1.png")
 
 all_sprites = pygame.sprite.Group()
 enemies_group = pygame.sprite.Group()
@@ -97,13 +100,13 @@ class Player(pygame.sprite.Sprite):
         self.max_health = MAX_HEALTH
         self.health = self.max_health
         self.coins = 0
-        self.gun_tip = [self.rect.x + self.rect.width - 5, self.rect.y + self.rect.height / 2 + 5]
         self.invulnerable = False
         self.invulnerability_duration = 8000
         self.invulnerability_timer = 0
         self.get_coins = 100
         self.cooldown = DEFAULT_SHOT_COOLDOWN
         self.score = 0
+        self.radius_attack = 550
 
     def update(self, *args, **kwargs):
         if args:
@@ -126,23 +129,18 @@ class Player(pygame.sprite.Sprite):
                 move_y = dy * self.speed / distance
 
                 old_rect = self.rect.copy()
-                gun_old_rect = self.gun_tip.copy()
 
                 self.rect.x += move_x
                 self.rect.y += move_y
-                self.gun_tip[0] += move_x
-                self.gun_tip[1] += move_y
 
                 if self.rect.y > 775:
                     self.rect = old_rect
-                    self.gun_tip = gun_old_rect
 
                 collide_throne = pygame.sprite.spritecollideany(self, throne_group, collided=pygame.sprite.collide_mask)
                 collide_tower = pygame.sprite.spritecollideany(self, tower_group, collided=pygame.sprite.collide_mask)
 
                 if collide_throne or collide_tower:
                     self.rect = old_rect
-                    self.gun_tip = gun_old_rect
 
             else:
                 self.target_pos = None
@@ -180,7 +178,7 @@ class Enemy(pygame.sprite.Sprite):
         self.now_side = "right"
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
-        self.damage = 10
+        self.damage = 8
         self.health = 15
         self.target = target
 
@@ -242,16 +240,9 @@ class Bullet(pygame.sprite.Sprite):
                 self.rect.x += move_x
                 self.rect.y += move_y
 
-            if self.type:
-                if pygame.sprite.collide_mask(self, self.target):
-                    if isinstance(self.target, (Throne, Tower, Enemy)):
-                        self.target.change_hp(-self.force)
-                    self.kill()
-
-            else:
-                if pygame.sprite.collide_mask(self, self.target):
-                    self.target.change_hp(-self.force)
-                    self.kill()
+            if pygame.sprite.collide_mask(self, self.target):
+                self.target.change_hp(-self.force)
+                self.kill()
 
 
 class Throne(pygame.sprite.Sprite):
@@ -263,7 +254,7 @@ class Throne(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
         if self.type == "enemy":
-            self.max_health = 200
+            self.max_health = 300
             self.health = self.max_health
         else:
             self.health = None
@@ -284,10 +275,10 @@ class Tower(pygame.sprite.Sprite):
         super().__init__(tower_group, enemies_group, all_sprites)
         self.image = img
         self.rect = self.image.get_rect().move(pos_x, pos_y)
-        self.max_health = 100
+        self.max_health = 150
         self.health = self.max_health
         self.mask = pygame.mask.from_surface(self.image)
-        self.damage = 20
+        self.damage = 25
 
     def change_hp(self, value):
         if self.health + value <= self.max_health:
@@ -305,20 +296,70 @@ def terminate():
     sys.exit()
 
 
+def wait_for_q():
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                return
+
+        clock.tick(FPS)
+
+
 def start_screen():
+    input_box = pygame.Rect(510, 655, 400, 70)
+    active = False
+    text = ''
     fon = pygame.transform.scale(load_image('zastavka.jpeg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
-    screen.blit(start_button, (WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
+
+    font_session = pygame.font.SysFont("comicsansms", 40)
+    text_session = font_session.render("Введите название игровой сессии: ", True, (0, 255, 0))
+    rules_button = font_session.render("Правила", True, (255, 0, 255))
+    rules_button_rect = rules_button.get_rect(topleft=(1600, 250))
+
     start_button_rect = start_button.get_rect(
         topleft=(WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
+    end_button_rect = end_button.get_rect(topleft=(WIDTH - 50, 4))
 
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if start_button_rect.collidepoint(event.pos):
-                    return
+                if event.button == 1:
+                    if start_button_rect.collidepoint(event.pos) and text:
+                        return text
+                    if end_button_rect.collidepoint(event.pos):
+                        terminate()
+                    if rules_button_rect.collidepoint(event.pos):
+                        screen.blit(rules_img, (0, 0))
+                        pygame.display.update()
+                        wait_for_q()
+                    if input_box.collidepoint(event.pos):
+                        active = not active
+                    else:
+                        active = False
+            elif event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        txt_surface = font.render(text, True, "white")
+        width = max(380, txt_surface.get_width() + 10)
+        input_box.w = width
+        screen.blit(fon, (0, 0))
+        screen.blit(start_button,
+                    (WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
+        screen.blit(rules_button,
+                    (1600, 250))
+        screen.blit(end_button,
+                    (WIDTH - 50, 4))
+        screen.blit(txt_surface, (input_box.x + 15, input_box.y + 10))
+        pygame.draw.rect(screen, "white", input_box, 2)
+        screen.blit(text_session, (200, 550))
+        screen.blit(input_rama, (500, 655))
+
         pygame.display.update()
         clock.tick(FPS)
 
@@ -329,14 +370,15 @@ def end_screen(final_score):
     text_surface = font_end.render(f"Game Over. Your Score: {final_score}", True, (255, 255, 255))
     screen.blit(text_surface, (WIDTH / 2 - text_surface.get_width() / 2, HEIGHT / 2 - text_surface.get_height() / 2))
     pygame.display.flip()
+    save_score(name_session, final_score)
     pygame.time.delay(3000)
     terminate()
 
 
-start_screen()
+name_session = start_screen()
 pygame.display.set_caption("Aota 2")
 player = Player(160, 160)
-tower = Tower(tower_img, WIDTH / 2 + 170, HEIGHT / 2 - 300)
+tower = Tower(tower_img, WIDTH / 2 + 260, HEIGHT / 2 - 240)
 running = True
 frame_index = 0
 kettles = []
@@ -345,6 +387,8 @@ enemies_throne = Throne(target_base, WIDTH - 400, HEIGHT / 2 - 195, "enemy")
 kettles.append(kettle)
 
 while running:
+    end_button_rect = end_button.get_rect(topleft=(WIDTH - 50, 4))
+
     hp = font.render(f"{player.health} / {player.max_health}", 1, (255, 0, 0))
     coins = font.render(f"{player.coins}", 1, (255, 215, 0))
     now_score = font.render(f"очки: {player.score}", 1, (0, 255, 50))
@@ -357,32 +401,21 @@ while running:
             if event.button == 3:
                 player.update(event)
             if event.button == 1:
+                if end_button_rect.collidepoint(event.pos):
+                    terminate()
                 distance_to_target = math.sqrt(
                     (player.rect.x - event.pos[0]) ** 2 + (player.rect.y - event.pos[1]) ** 2)
-                if distance_to_target <= 600:
+                if distance_to_target <= player.radius_attack:
                     current_time = pygame.time.get_ticks()
                     if current_time - last_shot_time >= player.cooldown:
                         click_x, click_y = event.pos
-                        if tower.health > 0:
-                            clicked_sprites = [sprite for sprite in enemies_group if
-                                               sprite.rect.collidepoint(click_x, click_y)]
+                        clicked_sprites = [sprite for sprite in enemies_group.sprites() + throne_group.sprites() if
+                                           sprite.rect.collidepoint(click_x, click_y)]
 
-                            for clicked_sprite in clicked_sprites:
-                                Bullet(player.rect.x + player.rect.width - 5,
-                                       player.rect.y + player.rect.height / 2 + 5,
-                                       clicked_sprite, 1)
-
-                            last_shot_time = current_time
-                        else:
-                            clicked_sprites = [sprite for sprite in enemies_group if
-                                               sprite.rect.collidepoint(click_x, click_y)]
-                            clicked_sprites += [sprite for sprite in throne_group if
-                                                sprite.rect.collidepoint(click_x, click_y) and sprite.type == "enemy"]
-
-                            for clicked_sprite in clicked_sprites:
-                                Bullet(player.rect.x + player.rect.width - 5,
-                                       player.rect.y + player.rect.height / 2 + 5,
-                                       clicked_sprite, 1)
+                        for clicked_sprite in clicked_sprites:
+                            Bullet(player.rect.x + player.rect.width - 5,
+                                   player.rect.y + player.rect.height / 2 + 5,
+                                   clicked_sprite, 1)
 
                             last_shot_time = current_time
                 if 10 <= event.pos[0] <= 10 + spell1.get_width() and 930 <= event.pos[
@@ -396,9 +429,11 @@ while running:
                     player.invulnerable = True
                     player.invulnerability_start_time = pygame.time.get_ticks()
                     player.coins -= 1250
+                    player.score += 20
                 if 330 <= event.pos[0] <= 330 + spell3.get_width() and 930 <= event.pos[
                     1] <= 930 + spell3.get_height() and player.coins >= 1100:
                     player.damage += 10
+                    player.radius_attack += 120
                     player.coins -= 1100
                     player.score += 20
                 if 490 <= event.pos[0] <= 490 + spell4.get_width() and 930 <= event.pos[
@@ -408,6 +443,7 @@ while running:
                     player.score += 20
                 if 650 <= event.pos[0] <= 650 + spell5.get_width() and 930 <= event.pos[
                     1] <= 930 + spell5.get_height() and player.coins >= 1500:
+                    player.max_health += 100
                     player.health += player.max_health // 2
                     player.coins -= 1500
                     player.score += 20
@@ -417,7 +453,7 @@ while running:
                     player.speed += 3
                     player.max_health += 75
                     player.health += 25
-                    player.get_coins += 15
+                    player.get_coins += 10
                     player.coins -= 2200
                     player.score += 20
                 if 970 <= event.pos[0] <= 970 + spell7.get_width() and 930 <= event.pos[
@@ -432,15 +468,12 @@ while running:
                     player.coins -= 2450
                     player.score += 20
 
-        if event.type == pygame.KEYDOWN:
-            if pygame.key.get_pressed()[pygame.K_x]:
-                terminate()
         if event.type == EVENT_FOR_KETTLE:
             frame_index = (frame_index + 1) % len(kettle_images)
             for sprite in kettles:
                 sprite.kill()
             kettles.clear()
-            kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, 1)
+            kettle = Throne(load_image(kettle_images[frame_index]), 0, 0, "friendly")
             kettles.append(kettle)
         if event.type == EVENT_FOR_DEFAULT_REGENERATION:
             player.change_hp(DEFAULT_REGEN + player.regen)
@@ -451,7 +484,7 @@ while running:
             for enemy in enemies_group:
                 distance_to_player = math.sqrt(
                     (enemy.rect.x - player.rect.x) ** 2 + (enemy.rect.y - player.rect.y) ** 2)
-                if distance_to_player <= 500 and enemy.health > 0:
+                if distance_to_player <= 670 and enemy.health > 0:
                     shot_from_enemy = Bullet(enemy.rect.x + 80, enemy.rect.y + 20, player, 0)
         if event.type == EVENT_FOR_SPAWN_CREEPS:
             enemy = Enemy(WIDTH - 200, random.randint(0, 900), player)
@@ -488,6 +521,8 @@ while running:
 
     for sprite in all_sprites:
         screen.blit(sprite.image, (sprite.rect.x, sprite.rect.y))
+
+    screen.blit(end_button, (WIDTH - 50, 4))
 
     pygame.display.flip()
     clock.tick(FPS)
