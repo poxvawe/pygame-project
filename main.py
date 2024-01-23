@@ -3,7 +3,7 @@ import pygame
 import os
 import math
 import random
-from data_base import save_score
+from data_base import save_score, score_from_bd
 
 pygame.init()
 
@@ -367,10 +367,19 @@ def start_screen():
 def end_screen(final_score):
     screen.fill((0, 0, 0))
     font_end = pygame.font.SysFont("comicsansms", 64)
+    font_row = pygame.font.SysFont("comicsansms", 40)
     text_surface = font_end.render(f"Game Over. Your Score: {final_score}", True, (255, 255, 255))
-    screen.blit(text_surface, (WIDTH / 2 - text_surface.get_width() / 2, HEIGHT / 2 - text_surface.get_height() / 2))
+    screen.blit(text_surface,
+                (WIDTH / 2 - text_surface.get_width() / 2 - 200, HEIGHT / 2 - text_surface.get_height() / 2))
     pygame.display.flip()
     save_score(name_session, final_score)
+    data = score_from_bd()
+    title = font_row.render(f"сессия результат", True, (255, 255, 255))
+    screen.blit(title, (1400, 0))
+    for i in range(10):
+        row = font_row.render(f"{data[i][0]}   {data[i][1]}", True, (255, 255, 255))
+        screen.blit(row, (1400, i * 80 + 100))
+        pygame.display.flip()
     pygame.time.delay(4000)
     terminate()
 
@@ -512,7 +521,7 @@ while running:
 
     for enemy in enemies_group:
         enemy_hp = font.render(f"{enemy.health}", 1, (255, 0, 0))
-        screen.blit(enemy_hp, (enemy.rect.x - 5, enemy.rect.y - 15))
+        screen.blit(enemy_hp, (enemy.rect.x - 7, enemy.rect.y - 17))
 
     for throne in throne_group:
         if throne.type == "enemy":
