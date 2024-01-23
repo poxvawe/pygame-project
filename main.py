@@ -367,7 +367,7 @@ def start_screen():
 def end_screen(final_score):
     screen.fill((0, 0, 0))
     font_end = pygame.font.SysFont("comicsansms", 64)
-    font_row = pygame.font.SysFont("comicsansms", 40)
+    font_row = pygame.font.SysFont("comicsansms", 38)
     text_surface = font_end.render(f"Game Over. Your Score: {final_score}", True, (255, 255, 255))
     screen.blit(text_surface,
                 (WIDTH / 2 - text_surface.get_width() / 2 - 200, HEIGHT / 2 - text_surface.get_height() / 2))
@@ -375,10 +375,10 @@ def end_screen(final_score):
     save_score(name_session, final_score)
     data = score_from_bd()
     title = font_row.render(f"рейтинговая таблица", True, (255, 255, 255))
-    screen.blit(title, (1400, 200))
+    screen.blit(title, (1400, 100))
     for i in range(10):
         row = font_row.render(f"{data[i][0]}   {data[i][1]}", True, (255, 255, 255))
-        screen.blit(row, (1400, i * 80 + 300))
+        screen.blit(row, (1400, i * 80 + 180))
         pygame.display.flip()
     pygame.time.delay(4000)
     terminate()
