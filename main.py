@@ -27,8 +27,8 @@ DEFAULT_HERO_SPEED = 3
 DEFAULT_REGEN = 1
 DEFAULT_HERO_DAMAGE = 10
 MAX_HEALTH = 100
-last_shot_time = pygame.time.get_ticks()
 DEFAULT_SHOT_COOLDOWN = 2000
+last_shot_time = pygame.time.get_ticks()
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode(SIZE)
 FPS = 50
@@ -63,7 +63,6 @@ shot = load_image("purplerocket.png", colorkey=-1)
 fireball = load_image("fireball1.png", colorkey=-1)
 tower_img = load_image("tower1.png")
 creep = load_image("creep.png")
-my_ally = load_image("ally.png")
 
 bg_for_spells = load_image("bg_for_spells2.jpg")
 spell1 = load_image("angel_rama.png")
@@ -124,7 +123,7 @@ class Player(pygame.sprite.Sprite):
             dy = self.target_pos[1] - (self.rect.y + self.rect.height / 2)
             distance = pygame.math.Vector2(dx, dy).length()
 
-            if distance > 3:
+            if distance > 10:
                 move_x = dx * self.speed / distance
                 move_y = dy * self.speed / distance
 
@@ -169,6 +168,8 @@ class Player(pygame.sprite.Sprite):
             self.coins += value
         else:
             self.coins = 10000
+        if self.coins + value <= 0:
+            self.coins = 0
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -179,7 +180,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(pos_x, pos_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.damage = 8
-        self.health = 15
+        self.health = 20
         self.target = target
 
     def update(self, *args, **kwargs):
@@ -275,10 +276,10 @@ class Tower(pygame.sprite.Sprite):
         super().__init__(tower_group, enemies_group, all_sprites)
         self.image = img
         self.rect = self.image.get_rect().move(pos_x, pos_y)
-        self.max_health = 150
+        self.max_health = 200
         self.health = self.max_health
         self.mask = pygame.mask.from_surface(self.image)
-        self.damage = 25
+        self.damage = 30
 
     def change_hp(self, value):
         if self.health + value <= self.max_health:
@@ -313,11 +314,13 @@ def start_screen():
 
     font_session = pygame.font.SysFont("comicsansms", 40)
     text_session = font_session.render("Введите название игровой сессии: ", True, (0, 255, 0))
+
     rules_button = font_session.render("Правила", True, (255, 0, 255))
     rules_button_rect = rules_button.get_rect(topleft=(1600, 250))
 
     start_button_rect = start_button.get_rect(
         topleft=(WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
+
     end_button_rect = end_button.get_rect(topleft=(WIDTH - 50, 4))
 
     while True:
@@ -351,10 +354,8 @@ def start_screen():
         screen.blit(fon, (0, 0))
         screen.blit(start_button,
                     (WIDTH / 2 - start_button.get_rect().x / 8, HEIGHT / 2 + start_button.get_rect().y / 2))
-        screen.blit(rules_button,
-                    (1600, 250))
-        screen.blit(end_button,
-                    (WIDTH - 50, 4))
+        screen.blit(rules_button, (1600, 250))
+        screen.blit(end_button, (WIDTH - 50, 4))
         screen.blit(txt_surface, (input_box.x + 15, input_box.y + 10))
         pygame.draw.rect(screen, "white", input_box, 2)
         screen.blit(text_session, (200, 550))
@@ -371,7 +372,7 @@ def end_screen(final_score):
     screen.blit(text_surface, (WIDTH / 2 - text_surface.get_width() / 2, HEIGHT / 2 - text_surface.get_height() / 2))
     pygame.display.flip()
     save_score(name_session, final_score)
-    pygame.time.delay(3000)
+    pygame.time.delay(4000)
     terminate()
 
 
@@ -484,7 +485,7 @@ while running:
             for enemy in enemies_group:
                 distance_to_player = math.sqrt(
                     (enemy.rect.x - player.rect.x) ** 2 + (enemy.rect.y - player.rect.y) ** 2)
-                if distance_to_player <= 670 and enemy.health > 0:
+                if distance_to_player <= 680 and enemy.health > 0:
                     shot_from_enemy = Bullet(enemy.rect.x + 80, enemy.rect.y + 20, player, 0)
         if event.type == EVENT_FOR_SPAWN_CREEPS:
             enemy = Enemy(WIDTH - 200, random.randint(0, 900), player)
@@ -517,7 +518,7 @@ while running:
     for throne in throne_group:
         if throne.type == "enemy":
             throne_hp = font.render(f"{throne.health}", 1, (255, 0, 0))
-            screen.blit(throne_hp, (throne.rect.x - 5, throne.rect.y - 15))
+            screen.blit(throne_hp, (throne.rect.x + 60, throne.rect.y + 25))
 
     for sprite in all_sprites:
         screen.blit(sprite.image, (sprite.rect.x, sprite.rect.y))
